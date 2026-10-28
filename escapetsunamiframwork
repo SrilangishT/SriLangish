@@ -1,0 +1,291 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Cleanup existing GUI if re-running
+if playerGui:FindFirstChild("SrilangishHub") then
+	playerGui.SrilangishHub:Destroy()
+end
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SrilangishHub"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- ==========================================
+-- 1. FLOATING TOGGLE BUTTON (Draggable, No Anim)
+-- ==========================================
+local toggleButton = Instance.new("ImageButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 56, 0, 56)
+toggleButton.Position = UDim2.new(0, 30, 0.5, -28)
+toggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+toggleButton.BorderColor3 = Color3.fromRGB(50, 50, 60)
+toggleButton.BorderSizePixel = 1
+toggleButton.AutoButtonColor = false
+toggleButton.Image = "rbxthumb://type=Asset&id=84381877245210&w=150&h=150"
+toggleButton.Parent = screenGui
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 16)
+btnCorner.Parent = toggleButton
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(70, 70, 90)
+btnStroke.Transparency = 0.3
+btnStroke.Thickness = 1.5
+btnStroke.Parent = toggleButton
+
+-- ==========================================
+-- 2. MAIN SCRIPT HUB WINDOW
+-- ==========================================
+local hubWindow = Instance.new("Frame")
+hubWindow.Name = "HubWindow"
+hubWindow.Size = UDim2.new(0, 480, 0, 340)
+hubWindow.Position = UDim2.new(0.5, -240, 0.5, -170)
+hubWindow.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+hubWindow.BorderSizePixel = 0
+hubWindow.Visible = false -- Starts hidden, toggled by button
+hubWindow.Parent = screenGui
+
+local hubCorner = Instance.new("UICorner")
+hubCorner.CornerRadius = UDim.new(0, 8)
+hubCorner.Parent = hubWindow
+
+local hubStroke = Instance.new("UIStroke")
+hubStroke.Color = Color3.fromRGB(45, 45, 55)
+hubStroke.Thickness = 1.5
+hubStroke.Parent = hubWindow
+
+-- Title Bar / Header
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 32)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "Srilangish (escape Tsunami for brainrots)"
+titleLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+titleLabel.TextSize = 13
+titleLabel.Parent = hubWindow
+
+-- Top Tabs Container
+local tabsContainer = Instance.new("Frame")
+tabsContainer.Size = UDim2.new(1, -20, 0, 32)
+tabsContainer.Position = UDim2.new(0, 10, 0, 35)
+tabsContainer.BackgroundTransparency = 1
+tabsContainer.Parent = hubWindow
+
+local tabsLayout = Instance.new("UIListLayout")
+tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+tabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabsLayout.Padding = UDim.new(0, 6)
+tabsLayout.Parent = tabsContainer
+
+-- Content Area Frame
+local contentFrame = Instance.new("ScrollingFrame")
+contentFrame.Size = UDim2.new(1, -20, 1, -85)
+contentFrame.Position = UDim2.new(0, 10, 0, 75)
+contentFrame.BackgroundTransparency = 1
+contentFrame.BorderSizePixel = 0
+contentFrame.CanvasSize = UDim2.new(0, 0, 0, 280)
+contentFrame.ScrollBarThickness = 4
+contentFrame.Parent = hubWindow
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Padding = UDim.new(0, 8)
+contentLayout.Parent = contentFrame
+
+-- Helper function to create feature rows
+local function createToggleRow(name, defaultState, order)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 36)
+	row.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = order
+	row.Parent = contentFrame
+	
+	local rowCorner = Instance.new("UICorner")
+	rowCorner.CornerRadius = UDim.new(0, 6)
+	rowCorner.Parent = row
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 12, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamMedium
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(200, 200, 210)
+	label.TextSize = 12
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = row
+	
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(0, 50, 0, 22)
+	toggleBtn.Position = UDim2.new(1, -62, 0.5, -11)
+	toggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(220, 50, 50)
+	toggleBtn.AutoButtonColor = false
+	toggleBtn.Font = Enum.Font.GothamBold
+	toggleBtn.Text = defaultState and "On" or "Off"
+	toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleBtn.TextSize = 11
+	toggleBtn.Parent = row
+	
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(0, 4)
+	tCorner.Parent = toggleBtn
+	
+	local state = defaultState
+	toggleBtn.MouseButton1Click:Connect(function()
+		state = not state
+		toggleBtn.Text = state and "On" or "Off"
+		toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(220, 50, 50)
+	end)
+end
+
+-- Helper function to create slider rows
+local function createSliderRow(name, minVal, maxVal, currentVal, order)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 44)
+	row.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = order
+	row.Parent = contentFrame
+	
+	local rowCorner = Instance.new("UICorner")
+	rowCorner.CornerRadius = UDim.new(0, 6)
+	rowCorner.Parent = row
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -20, 0, 20)
+	label.Position = UDim2.new(0, 12, 0, 4)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamMedium
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(200, 200, 210)
+	label.TextSize = 12
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = row
+	
+	-- Slider Bar BG
+	local sliderBg = Instance.new("Frame")
+	sliderBg.Size = UDim2.new(1, -24, 0, 6)
+	sliderBg.Position = UDim2.new(0, 12, 0, 28)
+	sliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	sliderBg.BorderSizePixel = 0
+	sliderBg.Parent = row
+	
+	local sBgCorner = Instance.new("UICorner")
+	sBgCorner.CornerRadius = UDim.new(0, 3)
+	sBgCorner.Parent = sliderBg
+	
+	-- Slider Fill
+	local fillPercent = math.clamp((currentVal - minVal) / (maxVal - minVal), 0, 1)
+	local sliderFill = Instance.new("Frame")
+	sliderFill.Size = UDim2.new(fillPercent, 0, 1, 0)
+	sliderFill.BackgroundColor3 = Color3.fromRGB(0, 160, 255)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Parent = sliderBg
+	
+	local sFillCorner = Instance.new("UICorner")
+	sFillCorner.CornerRadius = UDim.new(0, 3)
+	sFillCorner.Parent = sliderFill
+end
+
+-- Populate initial rows (Main tab contents)
+createToggleRow("Auto Farm Coins", true, 1)
+createToggleRow("God Mode Tsunami", false, 2)
+createSliderRow("WalkSpeed Boost", 1, 100, 35, 3)
+createToggleRow("Infinite Jump", true, 4)
+createToggleRow("Anti Ragdoll", false, 5)
+
+-- Tab buttons creation (Main, Farm, Misc, Settings)
+local tabNames = {"Main", "Farm", "Misc", "Settings"}
+for i, tName in ipairs(tabNames) do
+	local tabBtn = Instance.new("TextButton")
+	tabBtn.Size = UDim2.new(0, 105, 0, 26)
+	tabBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(28, 28, 34)
+	tabBtn.AutoButtonColor = false
+	tabBtn.Font = Enum.Font.GothamBold
+	tabBtn.Text = tName
+	tabBtn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+	tabBtn.TextSize = 11
+	tabBtn.Parent = tabsContainer
+	
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(0, 4)
+	tCorner.Parent = tabBtn
+end
+
+-- ==========================================
+-- 3. INTERACTION & DRAGGING LOGIC
+-- ==========================================
+
+-- Toggle Window Visibility with the Image Button
+toggleButton.MouseButton1Click:Connect(function()
+	hubWindow.Visible = not hubWindow.Visible
+end)
+
+-- Draggable Image Button Logic (Stays where dropped)
+local btnDragging = false
+local btnDragStart, btnStartPos
+
+toggleButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		btnDragging = true
+		btnDragStart = input.Position
+		btnStartPos = toggleButton.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				btnDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if btnDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - btnDragStart
+		toggleButton.Position = UDim2.new(
+			btnStartPos.X.Scale, 
+			btnStartPos.X.Offset + delta.X, 
+			btnStartPos.Y.Scale, 
+			btnStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Draggable Main Hub Window Logic
+local hubDragging = false
+local hubDragStart, hubStartPos
+
+titleLabel.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		hubDragging = true
+		hubDragStart = input.Position
+		hubStartPos = hubWindow.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				hubDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if hubDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - hubDragStart
+		hubWindow.Position = UDim2.new(
+			hubStartPos.X.Scale, 
+			hubStartPos.X.Offset + delta.X, 
+			hubStartPos.Y.Scale, 
+			hubStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
