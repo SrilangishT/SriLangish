@@ -1,0 +1,569 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Cleanup existing GUI if re-running
+if playerGui:FindFirstChild("SrilangishHubCompact") then
+	playerGui.SrilangishHubCompact:Destroy()
+end
+if playerGui:FindFirstChild("SrilangishFloatButtonUI") then
+	playerGui.SrilangishFloatButtonUI:Destroy()
+end
+if playerGui:FindFirstChild("SrilangishKickButtonUI") then
+	playerGui.SrilangishKickButtonUI:Destroy()
+end
+
+-- Create Main ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SrilangishHubCompact"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Create Separate Floating Control Button UI (Outside the Hub)
+local floatGui = Instance.new("ScreenGui")
+floatGui.Name = "SrilangishFloatButtonUI"
+floatGui.ResetOnSpawn = false
+floatGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+floatGui.Parent = playerGui
+
+-- Create Separate Kick Button UI (Outside the Hub)
+local kickGui = Instance.new("ScreenGui")
+kickGui.Name = "SrilangishKickButtonUI"
+kickGui.ResetOnSpawn = false
+kickGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+kickGui.Parent = playerGui
+
+-- ==========================================
+-- SCRIPT LOGIC & VARIABLES
+-- ==========================================
+local espEnabled = false
+local speedCFrameEnabled = false
+local velocityFloatEnabled = false
+local floatToCamEnabled = false
+local basePosition = Vector3.new(0, 5, 0)
+local lastPosition = Vector3.new(0, 5, 0)
+
+-- ESP Container
+local espFolder = Instance.new("Folder")
+espFolder.Name = "ESPFolder"
+espFolder.Parent = screenGui
+
+local function updateESP()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = p.Character.HumanoidRootPart
+			local billboard = hrp:FindFirstChild("SrilangishESP")
+			
+			if espEnabled then
+				if not billboard then
+					billboard = Instance.new("BillboardGui")
+					billboard.Name = "SrilangishESP"
+					billboard.Size = UDim2.new(0, 100, 0, 40)
+					billboard.AlwaysOnTop = true
+					billboard.StudsOffset = Vector3.new(0, 3, 0)
+					
+					local textLabel = Instance.new("TextLabel")
+					textLabel.Size = UDim2.new(1, 0, 1, 0)
+					textLabel.BackgroundTransparency = 1
+					textLabel.Font = Enum.Font.GothamBold
+					textLabel.TextSize = 12
+					textLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+					textLabel.TextStrokeTransparency = 0.5
+					textLabel.Parent = billboard
+					
+					billboard.Parent = hrp
+				end
+				billboard.TextLabel.Text = p.Name
+				billboard.Enabled = true
+			else
+				if billboard then
+					billboard:Destroy()
+				end
+			end
+		end
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	if espEnabled then
+		updateESP()
+	end
+	
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		local hrp = char.HumanoidRootPart
+		local humanoid = char:FindFirstChild("Humanoid")
+		lastPosition = hrp.Position
+		
+		-- Speed CFrame 0.5
+		if speedCFrameEnabled then
+			hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * 0.5)
+		end
+		
+		-- Float to Camera Position Logic
+		if floatToCamEnabled then
+			local cam = Workspace.CurrentCamera
+			if cam then
+				hrp.CFrame = cam.CFrame
+				hrp.AssemblyLinearVelocity = Vector3.zero
+			end
+		-- Velocity Float Logic (Keeps animations active + smooth upward movement on jump)
+		elseif velocityFloatEnabled then
+			local targetY = 0
+			if humanoid and humanoid.Jump then
+				targetY = 16 -- Smooth upward ascent when jumping
+			end
+			local vel = hrp.AssemblyLinearVelocity
+			hrp.AssemblyLinearVelocity = Vector3.new(vel.X, targetY, vel.Z)
+		end
+	end
+end)
+
+-- Character respawn capture position tracking
+player.CharacterAdded:Connect(function(char)
+	char:WaitForChild("HumanoidRootPart")
+	task.wait(0.5)
+	lastPosition = char.HumanoidRootPart.Position
+end)
+
+-- Tween to Base Function
+local function tweenToBase()
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		local hrp = char.HumanoidRootPart
+		local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+		local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(basePosition)})
+		tween:Play()
+	end
+end
+
+-- ==========================================
+-- 1. HUB TOGGLE BUTTON (Draggable)
+-- ==========================================
+local toggleButton = Instance.new("ImageButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Position = UDim2.new(0, 30, 0.5, -25)
+toggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+toggleButton.BorderColor3 = Color3.fromRGB(50, 50, 60)
+toggleButton.BorderSizePixel = 1
+toggleButton.AutoButtonColor = false
+toggleButton.Image = "rbxthumb://type=Asset&id=84381877245210&w=150&h=150"
+toggleButton.Parent = screenGui
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 14)
+btnCorner.Parent = toggleButton
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(70, 70, 90)
+btnStroke.Transparency = 0.3
+btnStroke.Thickness = 1.5
+btnStroke.Parent = toggleButton
+
+-- ==========================================
+-- 2. SEPARATE FLOATING VELOCITY BUTTON (Outside UI)
+-- ==========================================
+local separateFloatBtn = Instance.new("TextButton")
+separateFloatBtn.Name = "SeparateFloatButton"
+separateFloatBtn.Size = UDim2.new(0, 110, 0, 40)
+separateFloatBtn.Position = UDim2.new(0, 30, 0.5, 35)
+separateFloatBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+separateFloatBtn.AutoButtonColor = false
+separateFloatBtn.Font = Enum.Font.GothamBold
+separateFloatBtn.Text = "Float: OFF"
+separateFloatBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+separateFloatBtn.TextSize = 12
+separateFloatBtn.Parent = floatGui
+
+local sfCorner = Instance.new("UICorner")
+sfCorner.CornerRadius = UDim.new(0, 10)
+sfCorner.Parent = separateFloatBtn
+
+local sfStroke = Instance.new("UIStroke")
+sfStroke.Color = Color3.fromRGB(70, 70, 90)
+sfStroke.Thickness = 1.5
+sfStroke.Parent = separateFloatBtn
+
+separateFloatBtn.MouseButton1Click:Connect(function()
+	velocityFloatEnabled = not velocityFloatEnabled
+	if velocityFloatEnabled then
+		separateFloatBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+		separateFloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		separateFloatBtn.Text = "Float: ON"
+	else
+		separateFloatBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+		separateFloatBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+		separateFloatBtn.Text = "Float: OFF"
+	end
+end)
+
+-- Draggable Separate Float Button Logic
+local sfDragging = false
+local sfDragStart, sfStartPos
+
+separateFloatBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sfDragging = true
+		sfDragStart = input.Position
+		sfStartPos = separateFloatBtn.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				sfDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if sfDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - sfDragStart
+		separateFloatBtn.Position = UDim2.new(
+			sfStartPos.X.Scale, 
+			sfStartPos.X.Offset + delta.X, 
+			sfStartPos.Y.Scale, 
+			sfStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- ==========================================
+-- 3. SEPARATE KICK BUTTON (Outside UI)
+-- ==========================================
+local separateKickBtn = Instance.new("TextButton")
+separateKickBtn.Name = "SeparateKickButton"
+separateKickBtn.Size = UDim2.new(0, 110, 0, 40)
+separateKickBtn.Position = UDim2.new(0, 30, 0.5, 85)
+separateKickBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+separateKickBtn.AutoButtonColor = false
+separateKickBtn.Font = Enum.Font.GothamBold
+separateKickBtn.Text = "Kick Game"
+separateKickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+separateKickBtn.TextSize = 12
+separateKickBtn.Parent = kickGui
+
+local skCorner = Instance.new("UICorner")
+skCorner.CornerRadius = UDim.new(0, 10)
+skCorner.Parent = separateKickBtn
+
+local skStroke = Instance.new("UIStroke")
+skStroke.Color = Color3.fromRGB(220, 80, 80)
+skStroke.Thickness = 1.5
+skStroke.Parent = separateKickBtn
+
+separateKickBtn.MouseButton1Click:Connect(function()
+	player:Kick("You have been kicked by Srilangish Hub.")
+end)
+
+-- Draggable Separate Kick Button Logic
+local skDragging = false
+local skDragStart, skStartPos
+
+separateKickBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		skDragging = true
+		skDragStart = input.Position
+		skStartPos = separateKickBtn.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				skDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if skDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - skDragStart
+		separateKickBtn.Position = UDim2.new(
+			skStartPos.X.Scale, 
+			skStartPos.X.Offset + delta.X, 
+			skStartPos.Y.Scale, 
+			skStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- ==========================================
+-- 4. COMPACT SCRIPT HUB WINDOW (YT Srilangishgaming)
+-- ==========================================
+local hubWindow = Instance.new("Frame")
+hubWindow.Name = "HubWindow"
+hubWindow.Size = UDim2.new(0, 310, 0, 380)
+hubWindow.Position = UDim2.new(0.5, -155, 0.5, -190)
+hubWindow.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+hubWindow.BorderSizePixel = 0
+hubWindow.Visible = false 
+hubWindow.Parent = screenGui
+
+local hubCorner = Instance.new("UICorner")
+hubCorner.CornerRadius = UDim.new(0, 10)
+hubCorner.Parent = hubWindow
+
+local hubStroke = Instance.new("UIStroke")
+hubStroke.Color = Color3.fromRGB(50, 50, 60)
+hubStroke.Thickness = 1.5
+hubStroke.Parent = hubWindow
+
+-- Title Bar / Header ("YT Srilangishgaming")
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 36)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "YT Srilangishgaming"
+titleLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
+titleLabel.TextSize = 14
+titleLabel.Parent = hubWindow
+
+-- Tabs Container (Main, Visual, Misc)
+local tabsContainer = Instance.new("Frame")
+tabsContainer.Size = UDim2.new(1, -20, 0, 30)
+tabsContainer.Position = UDim2.new(0, 10, 0, 36)
+tabsContainer.BackgroundTransparency = 1
+tabsContainer.Parent = hubWindow
+
+local tabsLayout = Instance.new("UIListLayout")
+tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+tabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabsLayout.Padding = UDim.new(0, 6)
+tabsLayout.Parent = tabsContainer
+
+-- Content Container Pages Folder
+local pagesContainer = Instance.new("Folder")
+pagesContainer.Name = "PagesContainer"
+pagesContainer.Parent = hubWindow
+
+local function createTabPage(name)
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name .. "Page"
+	page.Size = UDim2.new(1, -20, 1, -80)
+	page.Position = UDim2.new(0, 10, 0, 72)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.CanvasSize = UDim2.new(0, 0, 0, 320)
+	page.ScrollBarThickness = 3
+	page.Visible = (name == "Main")
+	page.Parent = pagesContainer
+	
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 8)
+	layout.Parent = page
+	return page
+end
+
+local mainPage = createTabPage("Main")
+local visualPage = createTabPage("Visual")
+local miscPage = createTabPage("Misc")
+
+-- Helper function to create clean toggle rows
+local function createToggleRow(pageTarget, name, defaultState, order, callback)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 40)
+	row.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = order
+	row.Parent = pageTarget
+	
+	local rowCorner = Instance.new("UICorner")
+	rowCorner.CornerRadius = UDim.new(0, 8)
+	rowCorner.Parent = row
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.7, 0, 1, 0)
+	label.Position = UDim2.new(0, 14, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamMedium
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(210, 210, 220)
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = row
+	
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(0, 24, 0, 24)
+	toggleBtn.Position = UDim2.new(1, -36, 0.5, -12)
+	toggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(130, 130, 140)
+	toggleBtn.AutoButtonColor = false
+	toggleBtn.Text = ""
+	toggleBtn.Parent = row
+	
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(1, 0)
+	tCorner.Parent = toggleBtn
+	
+	local state = defaultState
+	toggleBtn.MouseButton1Click:Connect(function()
+		state = not state
+		toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(130, 130, 140)
+		if callback then callback(state) end
+	end)
+end
+
+-- Helper function to create Action Buttons
+local function createButtonRow(pageTarget, name, order, callback)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 40)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.Text = name
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.TextSize = 13
+	btn.AutoButtonColor = false
+	btn.LayoutOrder = order
+	btn.Parent = pageTarget
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+	
+	btn.MouseButton1Click:Connect(function()
+		if callback then callback() end
+	end)
+end
+
+-- Populate Main Tab features
+createToggleRow(mainPage, "Esp Player", false, 1, function(state)
+	espEnabled = state
+	if not state then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local esp = p.Character.HumanoidRootPart:FindFirstChild("SrilangishESP")
+				if esp then esp:Destroy() end
+			end
+		end
+	end
+end)
+
+createToggleRow(mainPage, "Speed CFrame (0.5)", false, 2, function(state)
+	speedCFrameEnabled = state
+end)
+
+createToggleRow(mainPage, "Float to Camera", false, 3, function(state)
+	floatToCamEnabled = state
+end)
+
+createButtonRow(mainPage, "Grab Current Position / Base", 4, function()
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		basePosition = char.HumanoidRootPart.Position
+		print("Base Position Set To: ", basePosition)
+	end
+end)
+
+createButtonRow(mainPage, "Tween to Base", 5, function()
+	tweenToBase()
+end)
+
+createButtonRow(mainPage, "Kick From Game", 6, function()
+	player:Kick("You have been kicked by Srilangish Hub.")
+end)
+
+-- Tab buttons creation & switching logic
+local tabNames = {"Main", "Visual", "Misc"}
+local pages = {Main = mainPage, Visual = visualPage, Misc = miscPage}
+
+for i, tName in ipairs(tabNames) do
+	local tabBtn = Instance.new("TextButton")
+	tabBtn.Size = UDim2.new(0, 90, 0, 26)
+	tabBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(32, 32, 38)
+	tabBtn.AutoButtonColor = false
+	tabBtn.Font = Enum.Font.GothamBold
+	tabBtn.Text = tName
+	tabBtn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+	tabBtn.TextSize = 12
+	tabBtn.Parent = tabsContainer
+	
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(0, 6)
+	tCorner.Parent = tabBtn
+	
+	tabBtn.MouseButton1Click:Connect(function()
+		for _, p in pairs(pages) do p.Visible = false end
+		for _, b in ipairs(tabsContainer:GetChildren()) do
+			if b:IsA("TextButton") then
+				b.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+				b.TextColor3 = Color3.fromRGB(150, 150, 160)
+			end
+		end
+		pages[tName].Visible = true
+		tabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end)
+end
+
+-- ==========================================
+-- 5. HUB TOGGLE & DRAGGING LOGIC
+-- ==========================================
+toggleButton.MouseButton1Click:Connect(function()
+	hubWindow.Visible = not hubWindow.Visible
+end)
+
+-- Draggable Main Hub Toggle Button
+local btnDragging = false
+local btnDragStart, btnStartPos
+
+toggleButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		btnDragging = true
+		btnDragStart = input.Position
+		btnStartPos = toggleButton.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				btnDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if btnDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - btnDragStart
+		toggleButton.Position = UDim2.new(
+			btnStartPos.X.Scale, 
+			btnStartPos.X.Offset + delta.X, 
+			btnStartPos.Y.Scale, 
+			btnStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Draggable Main Hub Window via Title Bar
+local hubDragging = false
+local hubDragStart, hubStartPos
+
+titleLabel.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		hubDragging = true
+		hubDragStart = input.Position
+		hubStartPos = hubWindow.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				hubDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if hubDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - hubDragStart
+		hubWindow.Position = UDim2.new(
+			hubStartPos.X.Scale, 
+			hubStartPos.X.Offset + delta.X, 
+			hubStartPos.Y.Scale, 
+			hubStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
